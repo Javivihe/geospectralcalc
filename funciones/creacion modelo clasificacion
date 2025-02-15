@@ -1,9 +1,6 @@
+// Creación del modelo de clasificación.
+
 var alos = ee.ImageCollection('JAXA/ALOS/AW3D30/V3_2');
-
-//////////////////////////////////////////////////
-// DEFINIR FUNCIÓN DEFINICIÓN MODELO CLASIFICACIÓN
-//////////////////////////////////////////////////
-
 
 exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccion ,dict_expresiones, semilla, training_ratio, paleta, sitio_string, fecha_ini, fecha_fin, predefinido) {
   print('predef', predefinido)
@@ -29,20 +26,20 @@ exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccio
     return banda;
   };
   
+  // Aplicamos la función addIndices a cada entrada del diccionario dict_expresiones
   var composite = dict_expresiones.map(addIndices);
   
+  // Obtenemos el número de entradas en el diccionario
   var tope = dict_expresiones.values().length().getInfo();
   
+  // Añadimos cada banda generada a la imagen original
   for (var i = 0; i<Number(tope); i++) {
-    
     imagen = imagen.addBands(composite.values().get(i));
-
   }
   
   composite = imagen;
 
   // Calculamos la pendiente y la elevación.
-
   var proj = alos.first().projection();
   
   var elevation = alos.select('DSM').mosaic()
@@ -52,6 +49,7 @@ exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccio
   var slope = ee.Terrain.slope(elevation)
     .rename('slope');
   
+  // Añadimos las bandas de elevación y pendiente a la imagen compuesta
   composite = composite.addBands(elevation).addBands(slope);
   
   if(predefinido === 0){
@@ -73,6 +71,8 @@ exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccio
       scale: 10,
       tileScale: 16
     });
+    
+    // Entrenamos el clasificador usando Random Forest
     var classifier = ee.Classifier.smileRandomForest(10)
     .train({
       features: training,  
@@ -81,17 +81,21 @@ exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccio
     });
   }
   else{
+    // Usamos el clasificador predefinido si está disponible
     classifier = predefinido;
   }
-  // Clasificamos.
+  
+  // Clasificamos la imagen compuesta
   var classified = composite.classify(classifier);
 
   var fecha_ini_red = ee.String(fecha_ini).slice(0,4);
   var fecha_fin_red = ee.String(fecha_fin).slice(0,4);
   
+  // Añadimos la capa clasificada al mapa
   mapa.addLayer(classified.clip(geometry), {min: 0, max: 3, palette: paleta}, ee.String(sitio_string).cat(' ').cat(fecha_ini_red).cat('/').cat(fecha_fin_red).getInfo());
   // mapa.centerObject(geometry);
 
+  // Exportamos la imagen clasificada a un asset
   Export.image.toAsset({
   image: classified.visualize({min: 0, max: 3, palette: paleta}),
   description: ee.String('Task_imagenes').cat(ee.String(sitio_string).getInfo().replace(/ /g, '')).cat('_').cat(fecha_ini).cat('_').cat(fecha_fin).getInfo(),
@@ -100,12 +104,12 @@ exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccio
   scale: 100
   });
 
-  
   //************************************************************************** 
   // Evaluación del modelo.
   //************************************************************************** 
   
   if(predefinido === 0){
+    // Obtenemos datos de validación
     var validation = composite.sampleRegions({
       collection: validationGcp,
       properties: ['landscape'],
@@ -113,8 +117,10 @@ exports.definir_modelo_clasificacion = function(mapa, imagen, geometry, coleccio
       tileScale: 16
     });
     
+    // Clasificamos los datos de validación
     var test = validation.classify(classifier);
     
+    // Calculamos la matriz de confusión
     var testConfusionMatrix = test.errorMatrix('landscape', 'classification');
     
     // Generamos todas estas métricas.

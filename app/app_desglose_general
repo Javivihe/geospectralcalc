@@ -1,10 +1,12 @@
+// Muestra la interfaz de la aplicación para clasificar una nueva localización desde cero.
+
 exports.app_desglose_general = function(){
   // IMPORTS
   var app_inicio = require('users/Pruebas_javi/geospectralcalc:app/app_inicio');
   var app_spectral_indices = require('users/Pruebas_javi/geospectralcalc:app/app_spectral_indices');
   var llamada = require('users/Pruebas_javi/geospectralcalc:funciones/llamada');
   
-
+  // Limpiar la interfaz de usuario y agregar un nuevo mapa
   ui.root.clear();
   var newMap = ui.Map();
   ui.root.add(newMap);
@@ -15,8 +17,7 @@ exports.app_desglose_general = function(){
   var fec_ini;
   var admn;
   
-  // Dropdown de country, state, community, year
-  
+  // Dropdown de país, estado, comunidad, año
   var statesDropdown = ui.Select({
     placeholder: 'Loading countries...',
     disabled: true,
@@ -47,57 +48,53 @@ exports.app_desglose_general = function(){
   });
   
   // Botón de lanzamiento
-  
   var launchButton = ui.Button({
     label: 'Choose a year first',
     onClick: function(){
-    try{
-      llamada.llamada(loc, admn, fec_ini, dict, newMap);
-      print('Lanzamiento correcto');
-    } catch (exceptionVar){
-      var button = ui.Textbox({
-    value: 'There was a problem with the dictionary, try another one.',
-        disabled: true,
-        style: {
-          width: '360px',
-          border : '2px red',
-          position: 'top-center',
-          backgroundColor: '#db7d7d',
-          textAlign: 'center'
-        }
+      try{
+        llamada.llamada(loc, admn, fec_ini, dict, newMap);
+        print('Lanzamiento correcto');
+      } catch (exceptionVar){
+        var button = ui.Textbox({
+          value: 'There was a problem with the dictionary, try another one.',
+          disabled: true,
+          style: {
+            width: '360px',
+            border : '2px red',
+            position: 'top-center',
+            backgroundColor: '#db7d7d',
+            textAlign: 'center'
+          }
         });
         newMap.add(button);
-    }
+      }
     },
     disabled: true,
     style: { width: '360px' },
     imageUrl: {}
   });
   
-  var panelTitle = ui.Label('New calculation',
-    {fontWeight: 'bold',
+  // Título y descripción del panel
+  var panelTitle = ui.Label('New calculation', {
+    fontWeight: 'bold',
     fontSize: '18px',
     color: 'black'
   });
   
-  var panelDescription = ui.Label('By selecting a country, a state (or region), and a year, the app allows you to classify a specific terrain using spectral indices from satellite imagery',
-    {  });
-  var panelAdvertencia = ui.Label('Using a custom dictionary may take a while...',
-    {fontWeight: 'bold',
+  var panelDescription = ui.Label('By selecting a country, a state (or region), and a year, the app allows you to classify a specific terrain using spectral indices from satellite imagery', {});
+  
+  var panelAdvertencia = ui.Label('Using a custom dictionary may take a while...', {
+    fontWeight: 'bold',
     color: 'red'
   });
   
-
   // Botón más Info
-  
   var new_dict;
 
   var buttonmasInfo = ui.Button({
     label: 'More information',
     onClick: function(){
-      
-    app_spectral_indices.app_spectral_indices();
-
+      app_spectral_indices.app_spectral_indices();
     },
     disabled: false,
     style: {position: 'bottom-right'},
@@ -105,8 +102,6 @@ exports.app_desglose_general = function(){
   });
 
   // Botón nieve
-
-  
   var check_nieve = ui.Checkbox({
     label: 'Snow',
     value: false,
@@ -124,8 +119,7 @@ exports.app_desglose_general = function(){
 
   check_nieve.onChange(update_checkbox);
 
-  // Custom dictionary 
-
+  // Diccionario personalizado
   var customDescription = ui.Label("Here you can implement your own dictionary. Use '{' and '}' too.");
 
   var textbox = ui.Textbox({value:'{"name": ["index", percentile, "color", [ array ], [ percentiles ], 0]}'});
@@ -134,26 +128,25 @@ exports.app_desglose_general = function(){
   var button_desglose = ui.Button({
     label: 'Save dictionary',
     onClick: function(){
+      print(textbox.getValue());
+      dict = textbox.getValue();
       
-    print(textbox.getValue());
-    dict = textbox.getValue();
-    
-    var button = ui.Textbox({
-    value: 'Dictionary updated',
-    disabled: true,
-    style: {
-      width: '150px',
-      border : '2px green',
-      position: 'top-center',
-      backgroundColor: '#a6f078',
-      textAlign: 'center'
-    }
-    });
-    newMap.add(button);
-    check_nieve.setDisabled(1);
-    check_nieve.setValue(0);
-    button_desglose.setDisabled(1);
-    textbox.setDisabled(1);
+      var button = ui.Textbox({
+        value: 'Dictionary updated',
+        disabled: true,
+        style: {
+          width: '150px',
+          border : '2px green',
+          position: 'top-center',
+          backgroundColor: '#a6f078',
+          textAlign: 'center'
+        }
+      });
+      newMap.add(button);
+      check_nieve.setDisabled(1);
+      check_nieve.setValue(0);
+      button_desglose.setDisabled(1);
+      textbox.setDisabled(1);
     },
     disabled: false,
     style: { width: '360px' },
@@ -161,7 +154,6 @@ exports.app_desglose_general = function(){
   });
 
   // Panel principal
-
   var panel = ui.Panel({
     widgets: [panelTitle, panelDescription, statesDropdown, districtsDropdown, communitiesDropdown, yearsDropdown, check_nieve, launchButton, customDescription, panelAdvertencia, textbox, button_desglose, buttonmasInfo],
     style: {
@@ -173,7 +165,6 @@ exports.app_desglose_general = function(){
   ui.root.insert(1, panel);
   
   // Funciones de cambio de estado
-  
   function onStateChange(stateId) {
     var admin2 = ee.FeatureCollection('FAO/GAUL_SIMPLIFIED_500m/2015/level2');
     var condicion_pais = ee.String('ADM0_NAME == "').cat(stateId).cat('"');
@@ -194,7 +185,6 @@ exports.app_desglose_general = function(){
       communitiesDropdown.setDisabled(true);
 
       launchButton.setDisabled(true);
-
     }
     else{
       updateDistricts(stateId, condicion_pais);
@@ -208,11 +198,7 @@ exports.app_desglose_general = function(){
       yearsDropdown.setDisabled(true);
 
       launchButton.setDisabled(true);
-      // loc = stateId
-
     }
-
-  
   }
 
   function onDistrictChange(districtId) {
@@ -234,7 +220,6 @@ exports.app_desglose_general = function(){
       
       launchButton.setDisabled(true);
     }
-    
     else{
       updateCommunities(districtId, condicion_comunidad);
 
@@ -243,7 +228,6 @@ exports.app_desglose_general = function(){
       yearsDropdown.setDisabled(true);
       
       launchButton.setDisabled(true);
-      // loc = districtId
     }
   }
   
@@ -256,13 +240,11 @@ exports.app_desglose_general = function(){
     admn = 'ADM2_NAME';
     launchButton.setDisabled(true);
     updateYears();
-    // newMap.centerObject(geometry);
     print('selected community', communityId);
     loc = communityId;
   }
     
   function onYearChange(year) {
-
     print('selected year', year);
     fec_ini = year;
     updateLaunch();
@@ -275,20 +257,19 @@ exports.app_desglose_general = function(){
         statesDropdown.items().reset(states);
         statesDropdown.setPlaceholder('Choose a country');
         statesDropdown.setDisabled(false);
-  
       });
   }
   
   function updateDistricts(stateId, state) {
-    // Before districts have loaded
+    // Antes de que los estados se carguen
     districtsDropdown.items().reset([]);
     districtsDropdown.setPlaceholder('Loading states...');
     districtsDropdown.setDisabled(true);
     
-      admin2.filter(state)
+    admin2.filter(state)
       .aggregate_array('ADM1_NAME').distinct()
       .evaluate(function(districts) {
-        // After districts have loaded
+        // Después de que los estados se carguen
         districtsDropdown.items().reset(districts);
         districtsDropdown.setPlaceholder('Choose a state');
         districtsDropdown.setDisabled(false);
@@ -296,15 +277,15 @@ exports.app_desglose_general = function(){
   }
   
   function updateCommunities(stateId, state) {
-    // Before districts have loaded
+    // Antes de que las comunidades se carguen
     communitiesDropdown.items().reset([]);
     communitiesDropdown.setPlaceholder('Loading communities...');
     communitiesDropdown.setDisabled(true);
     
-      admin2.filter(state)
+    admin2.filter(state)
       .aggregate_array('ADM2_NAME').distinct()
       .evaluate(function(districts) {
-        // After districts have loaded
+        // Después de que las comunidades se carguen
         communitiesDropdown.items().reset(districts);
         communitiesDropdown.setPlaceholder('Choose a community');
         communitiesDropdown.setDisabled(false);
@@ -320,22 +301,17 @@ exports.app_desglose_general = function(){
   function updateLaunch() {
     launchButton.setLabel('Start analysis');
     launchButton.setDisabled(false);
-  
-
   }
   
-    // Botón volver atrás
-
+  // Botón volver atrás
   var button = ui.Button({
     label: 'Go back',
     onClick: function(){
-      
-    app_inicio.app_inicio();
+      app_inicio.app_inicio();
     },
     disabled: false,
     style: {position: 'bottom-right'},
     imageUrl: {}
   });
   panel.add(button);
-
 };

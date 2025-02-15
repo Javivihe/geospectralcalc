@@ -4,15 +4,19 @@ var admin2 = ee.FeatureCollection("FAO/GAUL/2015/level2"),
     features_hist = ee.FeatureCollection("projects/pepe-javi-2024/assets/proyecto/Features"),
     feaures_imagenes = ee.ImageCollection("projects/pepe-javi-2024/assets/proyecto/Features_imagenes");
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+// Importar módulos requeridos
 var feature = require('users/Pruebas_javi/geospectralcalc:funciones/Creacion Feature Collection');
 var clasificacion = require('users/Pruebas_javi/geospectralcalc:funciones/creacion modelo clasificacion');
 var areas = require('users/Pruebas_javi/geospectralcalc:funciones/calculo areas');
 var regresion = require('users/Pruebas_javi/geospectralcalc:funciones/calculo regresion');
+
 /////////////////////////////////////////////////////////////////////////
 // FUNCIÓN GENERAL QUE CREA FEATURE COLLECTION Y MODELO DE CLASIFICACIÓN.
 /////////////////////////////////////////////////////////////////////////
 
 exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, fecha_fin, dict, semilla, training_ratio, predefinido) {
+  // Código comentado para copiar y eliminar assets
   // try{
   // ee.data.copyAsset('projects/pepe-javi-2024/assets/Features_aux', 'projects/pepe-javi-2024/assets/proyecto/Features', 1);
   // ee.data.deleteAsset('projects/pepe-javi-2024/assets/Features_aux');
@@ -20,9 +24,7 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
   //   print('No existe aux');
   // }
   
-  
-  // Funciones adicionales que 'recortan' el diccionario de entrada.
-  
+  // Funciones adicionales que 'recortan' el diccionario de entrada
   var primer_elemento = function(key, value) {
     return key, ee.List(value).get(0);
   };
@@ -31,31 +33,28 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
     return key, ee.List(value).get(2);
   };
   
-  // Primero mira si se ha cargado previamente la información solicitada.
+  // Primero mira si se ha cargado previamente la información solicitada
   var sitio_string = ee.String(ee.List(localizacion.split(' == ')).get(1)).replace("'", '').replace("'", '');
   var flag = 0;
   var listOfImages = feaures_imagenes.toList(feaures_imagenes.size());
   
-  // Definimos la localización y el espacio temporal.
-  
+  // Definir la localización y el espacio temporal
   var admin2_geo = admin2.filter(localizacion);
   var geometry = admin2_geo.geometry();
-    
-    
-    
-  //   var rgbVis_predefinida = {
+  
+  // Código comentado para visualización predefinida
+  // var rgbVis_predefinida = {
   //   min: 0.0,
   //   max: 255,
   //   bands: ['vis-red', 'vis-green', 'vis-blue']
   //   };
   
+  // Código comentado para verificar características históricas
   // var table_feature = features_hist.toList(10000);
-
   // for (var l = 0; l<features_hist.size().getInfo(); l++) {
   //   var cond_1 = ((ee.Feature(table_feature.get(l))).get('sitio').getInfo() == sitio_string.getInfo());
   //   var cond_2 = ((ee.Feature(table_feature.get(l))).get('fecha_inicio').getInfo() == fecha_ini);
   //   var cond_3 = ((ee.Feature(table_feature.get(l))).get('fecha_fin').getInfo() == fecha_fin);
-
   //   if (cond_1 && cond_2 && cond_3) {
   //     var string_capa = sitio_string.cat(' ').cat(fecha_ini).cat(' ').cat(fecha_fin);
   //     for (var p = 0; p<feaures_imagenes.size().getInfo(); p++) {
@@ -75,21 +74,17 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
   //   } 
   // }
   
-  
   if (flag === 0) {
-    
-    // Definimos la localización y el espacio temporal.
-  
+    // Definir la localización y el espacio temporal
     var filtered = s2
-    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+      .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
       .filter(ee.Filter.date(fecha_ini, fecha_fin))
       .filter(ee.Filter.bounds(geometry))
       .select('B.*');
       
     var composite = filtered.median();
     
-    // Añadimos la capa sin filtros, para poder comparar.
-    
+    // Añadir la capa sin filtros para comparar
     var rgbVis = {
       min: 0.0,
       max: 3000,
@@ -98,9 +93,7 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
     
     mapa.addLayer(composite.clip(geometry), rgbVis, 'Satellite');
     
-  
-    // Creamos la feature collection a través del diccionario y su respectiva función.
-    
+    // Crear la feature collection a través del diccionario y su respectiva función
     var cityArea = geometry.area();
     var cityAreaSqKm = ee.Number(cityArea).divide(1e6).round();
     
@@ -127,21 +120,18 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
       gcps = 'NADA';
     }
   
+    // Código comentado para centrar y agregar capa gcps
     // mapa.centerObject(geometry);
     // mapa.addLayer(gcps, {}, 'gcps');
     
-    // Generamos el modelo de clasificación así como sus respectivas métricas.
-    
+    // Generar el modelo de clasificación y sus respectivas métricas
     var imagen_clasificada = clasificacion.definir_modelo_clasificacion(mapa, composite, geometry, gcps, dict.map(primer_elemento), semilla, training_ratio, dict.map(tercer_elemento).values().getInfo(), sitio_string, fecha_ini, fecha_fin, predefinido);
     
-    // Creación Feature collection con información de áreas.
-  
-    
+    // Crear Feature collection con información de áreas
     var lista_keys = ee.List([]);
     var lista_values = ee.List([]);
     var str_areas = 'Areas: \n';
     for (var j = 0; j<Number(tope); j++) {
-      
         var area = areas.calculo_areas(imagen_clasificada, geometry, ee.String(dict.keys().get(j)).getInfo(), j);
         var key_value = ee.String(dict.keys().get(j)).getInfo();
         lista_values = lista_values.add(area);
@@ -164,8 +154,6 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
     
     print('Feature de áreas', feature_final);
     
-
-    
     var output = ee.String('Total area: ').cat(dic_areas_total_dict.get('area_total')).cat(' km^2').cat('\n').cat(str_areas);
 
     print(output);
@@ -185,6 +173,5 @@ exports.funcion_general_clasificacion = function(mapa, localizacion, fecha_ini, 
     mapa.add(button);
     
     return feature_final;
-
   }
 };
