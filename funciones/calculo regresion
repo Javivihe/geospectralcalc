@@ -1,0 +1,62 @@
+exports.calculo_regresion = function(panel, localizacion, feature) {
+  // panel.remove(chart)
+  feature = feature.filter(ee.Filter.eq('sitio', localizacion.getInfo()));
+  var feature_lista = feature.toList(feature.size());
+
+  var areas_diccionario = ee.Dictionary(ee.Dictionary(ee.String(ee.Feature(feature_lista.get(0)).get('areas')).decodeJSON()).get('area_por_capa'));
+  var keys_diccionario_areas = areas_diccionario.keys();
+  for (var j = 0; j<areas_diccionario.size().getInfo(); j++) {
+  
+    var array = ee.List([]);
+    var array_fechas = ee.List([]);
+    var array_areas = ee.List([]);
+    for (var i = 0; i<feature.size().getInfo(); i++) {
+      var fecha = ee.String(ee.Feature(feature_lista.get(i)).get('fecha_inicio'));
+      var area_1 = ee.Dictionary(ee.Dictionary(ee.String(ee.Feature(feature_lista.get(i)).get('areas')).decodeJSON()).get('area_por_capa')).get(keys_diccionario_areas.get(j));
+      array = array.add([ee.Date(fecha).get('year'), area_1]);
+      array_fechas = array_fechas.add(ee.Date(fecha).get('year'));
+      array_areas = array_areas.add(area_1);
+    }
+    var sortColumn = 0;
+    var keyValues = array.map(function(inner) {
+        return ee.List(inner).get(sortColumn);
+    })
+    array = array.sort(keyValues);
+  
+    /////////////
+    var linearFit = ee.Dictionary(array.reduce(ee.Reducer.linearFit()));
+    var yInt = linearFit.get('offset'); // y-intercept
+    var slope = linearFit.get('scale'); // slope
+    
+    var y2 = ee.Array(array_fechas.map(function(x) {
+      var y = ee.Number(x).multiply(slope).add(yInt);
+      return y;
+    }));
+    var yArr = ee.Array.cat([array_areas, y2], 1);
+    var chart = ui.Chart.array.values({
+      array: yArr,
+      axis: 0,
+      xLabels: array_fechas
+    })
+      .setChartType('ScatterChart')
+      .setOptions({
+        legend: {position: 'none'},
+        hAxis: {'title': 'Evolución temporal', format: '# Y'},
+        vAxis: {'title': ee.String(keys_diccionario_areas.get(j)).slice(2).cat(' (km^2)').getInfo(), minValue:0},
+        series: {
+          0: {
+            pointSize: 5,
+            dataOpacity: 1,
+          },
+          1: {
+            pointSize: 0,
+            lineWidth: 2,
+          }
+        }
+      });
+    panel.add(chart);
+    // print(chart);
+
+    
+  }
+};

@@ -1,0 +1,19 @@
+
+exports.calculo_areas = function(image, geometry, nombre, eq) {
+  
+  var capa = image.clip(geometry).eq(eq);
+  
+  var areaImage = capa.multiply(ee.Image.pixelArea());
+  
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    scale: 600,
+    maxPixels: 1e10
+  });
+
+  var AreaSqKm = ee.Number(area.get('classification')).divide(1e6).round();
+  // print(nombre, AreaSqKm);
+  return AreaSqKm;
+
+};
+
